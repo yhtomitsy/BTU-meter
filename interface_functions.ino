@@ -37,7 +37,6 @@ void batteryStructure(){
 void batteryMeter(){
   volatile float level = float(sensorReadings[0])/float(1023) * float(6);
   level = level / float(6);
-  Serial.println(level);
   tft.fillRect(281, 5, 35, 15, 0x00); // clear battery
   tft.fillRect(277, 7, 5, 10, 0x00);
   tft.fillRect(317-(level*35), 5, level*35, 15, 0xffffff); // fill battery body

@@ -1,11 +1,11 @@
 // increments timer by 1 every second
 void incrTimer(){
-   if(!action) action = true;
-    timer ++;
+   if(!action) action = true; // disable touch function
+    timer ++; // increase timer by 1
     bigButton(100,110, 220, 0xFFFFFF, 0x00, 0, ""); // clear the text in the body of the page
     tft.setTextSize(3); //set font size
     tft.setCursor(130,110); // st position of cursor
-    tft.print(timer); 
+    tft.print(timer); // print timer value on screen
     sensorReadings[3] = getSensorReadings(A2, 200); // get temp sply
     if (sensorReadings[3] >= trig_pr_hi){
       timer = timer/float(10);
@@ -18,13 +18,13 @@ void incrTimer(){
  * read sensor readings
  */
 void readSensors(){
-  sensorReadings[1] = getSensorReadings(A0, 100); // get temp sply
-  sensorReadings[2] = getSensorReadings(A1, 100); // get temp rtn
-  sensorReadings[3] = getSensorReadings(A2, 200); // get temp sply
+  sensorReadings[1] = getSensorReadings(adc_single_ch0, 100); // get temp sply
+  sensorReadings[2] = getSensorReadings(adc_single_ch1, 100); // get temp rtn
+  sensorReadings[3] = getSensorReadings(adc_single_ch2, 200); // get temp sply
   if(pageNumber == 0){
     BOXSIZE = 20;
     tft.setTextSize(2); //set font size
-    if(abs(sensorReadings[1] - sensorReadingsPrev[1]) > 2){
+    if(abs(sensorReadings[1] - sensorReadingsPrev[1]) > 1){
       bigButton(120,70,200, 0x00,0x00, 0, "");
       tft.setTextColor(0xFFFFFF); // set font to brown
       tft.setCursor(120,70); // st position of cursor
@@ -32,7 +32,7 @@ void readSensors(){
       tft.print(" deg");
       sensorReadingsPrev[1] = sensorReadings[1];
     }
-    if(abs(sensorReadings[2] - sensorReadingsPrev[2]) > 2){
+    if(abs(sensorReadings[2] - sensorReadingsPrev[2]) > 1){
       bigButton(120,100,200, 0x00,0x00, 0, "");
       tft.setTextColor(0xFFFFFF); // set font to brown
       tft.setCursor(120,100); // st position of cursor
@@ -42,7 +42,7 @@ void readSensors(){
     }
   }
   if(pageNumber == 0 || pageNumber == 3 || pageNumber == 4){
-    if(abs(sensorReadings[3] - sensorReadingsPrev[3]) > 2){
+    if(abs(sensorReadings[3] - sensorReadingsPrev[3]) > 1){
       if (pageNumber == 3 || pageNumber == 4){
         bigButton(80,70,120, 0x00,0x00, 0, "");
         tft.setCursor(80,70); // st position of cursor
@@ -95,21 +95,40 @@ void saveEeprom(){
 }
 
 /*
+ * clear previous values
+ */
+void clearPrev(){
+  sensorReadingsPrev[0] = 0; // set previous battery reading to 0
+  sensorReadingsPrev[1] = 0; // set previous battery reading to 0
+  sensorReadingsPrev[2] = 0; // set previous battery reading to 0
+  sensorReadingsPrev[3] = 0; // set previous battery reading to 0
+}
+
+/*
  * get sensor readings
  */
-float getSensorReadings(uint8_t num, int scale){
-  volatile float reading = analogRead(num);
+float getSensorReadings(byte num, int scale){
+  volatile float reading = readADC(num);
   reading = float(reading)/float(1023) * float(scale);
   return reading;
 }
 
 /*
- * clear previous values
+ * reading from ADC chip
  */
-void clearPrev(){
-  sensorReadingsPrev[0] = 0; // set previus battery reading to 0
-  sensorReadingsPrev[1] = 0; // set previus battery reading to 0
-  sensorReadingsPrev[2] = 0; // set previus battery reading to 0
-  sensorReadingsPrev[3] = 0; // set previus battery reading to 0
-}
+int readADC(byte readAddress){
+  byte dataMSB =    0;
+  byte dataLSB =    0;
+  byte JUNK    = 0x00;
 
+  SPI.beginTransaction (MCP3008); // begin the SPI connection
+    
+  digitalWrite (ADC_CS, LOW); // enable measurement from the ADC
+  SPI.transfer (0x01); // send out the start bit
+  dataMSB = SPI.transfer(readAddress << 4) & 0x03; // read incoming MSB data 
+  dataLSB = SPI.transfer(JUNK); //  read incoming LSB data
+
+  digitalWrite (ADC_CS, HIGH); // disable measurement from the ADC
+  SPI.endTransaction(); //end SPI transaction
+  return               dataMSB << 8 | dataLSB;
+}
